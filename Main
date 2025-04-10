@@ -1,0 +1,463 @@
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+from PIL import Image, ImageTk
+import json
+
+# Configurações
+CONFIG_FILE = "texture_pack_config.json"
+BG_IMAGE = "1329100.png"
+DEFAULT_CONFIG = {
+    "language": "pt_BR",
+    "version": "1.20"
+}
+# CREATOR BY A2BR
+# Dicionários de idiomas
+LANGUAGES = {
+    "pt_BR": {
+        "title": "Gerador de Pacote de Textura",
+        "version": "Versão",
+        "name": "Nome da textura",
+        "description": "Descrição",
+        "select_word": "Definir cores",
+        "select_image": "Selecionar imagem",
+        "generate": "Gerar Produto",
+        "preview": "Pré-visualização",
+        "success": "Produto gerado com sucesso em:",
+        "no_image": "[Nenhuma imagem]",
+        "select_word_prompt": "Selecione uma palavra:",
+        "all_colors_set": "Todas as palavras já têm cores definidas.",
+        "invalid_name": "Nome da textura inválido.",
+        "enter_description": "Digite uma descrição primeiro.",
+        "select_word_first": "Selecione uma palavra primeiro"
+    },
+    "en_US": {
+        "title": "Texture Pack Generator",
+        "version": "Version",
+        "name": "Pack name",
+        "description": "Description",
+        "select_word": "Set colors",
+        "select_image": "Select image",
+        "generate": "Generate Product",
+        "preview": "Preview",
+        "success": "Product successfully generated at:",
+        "no_image": "[No image]",
+        "select_word_prompt": "Select a word:",
+        "all_colors_set": "All words already have colors set.",
+        "invalid_name": "Invalid texture name.",
+        "enter_description": "Please enter a description first.",
+        "select_word_first": "Please select a word first"
+    },
+    "es_LA": {
+        "title": "Generador de Paquete de Texturas",
+        "version": "Versión",
+        "name": "Nombre del paquete",
+        "description": "Descripción",
+        "select_word": "Definir colores",
+        "select_image": "Seleccionar imagen",
+        "generate": "Generar Producto",
+        "preview": "Previsualización",
+        "success": "Producto generado con éxito en:",
+        "no_image": "[Sin imagen]",
+        "select_word_prompt": "Seleccione una palabra:",
+        "all_colors_set": "Todas las palabras ya tienen colores definidos.",
+        "invalid_name": "Nombre de textura inválido.",
+        "enter_description": "Por favor ingrese una descripción primero.",
+        "select_word_first": "Por favor seleccione una palabra primero"
+    },
+    "ru_RU": {
+        "title": "Генератор текстурных пакетов",
+        "version": "Версия",
+        "name": "Название пакета",
+        "description": "Описание",
+        "select_word": "Выбрать цвета",
+        "select_image": "Выбрать изображение",
+        "generate": "Создать продукт",
+        "preview": "Предпросмотр",
+        "success": "Продукт успешно создан по адресу:",
+        "no_image": "[Нет изображения]",
+        "select_word_prompt": "Выберите слово:",
+        "all_colors_set": "Все слова уже имеют заданные цвета.",
+        "invalid_name": "Недопустимое название текстуры.",
+        "enter_description": "Пожалуйста, сначала введите описание.",
+        "select_word_first": "Пожалуйста, сначала выберите слово"
+    }
+}
+
+# Versões do Minecraft
+GAME_VERSIONS = ["1.12.2", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21"]
+
+# Cores Minecraft com amostras visuais
+COLORS = {
+    "Preto": {"code": "0", "hex": "#000000"},
+    "Azul Escuro": {"code": "1", "hex": "#0000AA"},
+    "Verde Escuro": {"code": "2", "hex": "#00AA00"},
+    "Aqua Escuro": {"code": "3", "hex": "#00AAAA"},
+    "Vermelho Escuro": {"code": "4", "hex": "#AA0000"},
+    "Roxo Escuro": {"code": "5", "hex": "#AA00AA"},
+    "Dourado": {"code": "6", "hex": "#FFAA00"},
+    "Cinza": {"code": "7", "hex": "#AAAAAA"},
+    "Cinza Escuro": {"code": "8", "hex": "#555555"},
+    "Azul": {"code": "9", "hex": "#5555FF"},
+    "Verde": {"code": "a", "hex": "#55FF55"},
+    "Aqua": {"code": "b", "hex": "#55FFFF"},
+    "Vermelho": {"code": "c", "hex": "#FF5555"},
+    "Roxo Claro": {"code": "d", "hex": "#FF55FF"},
+    "Amarelo": {"code": "e", "hex": "#FFFF55"},
+    "Branco": {"code": "f", "hex": "#FFFFFF"}
+}
+
+class TexturePackGenerator:
+    def __init__(self, root):
+        self.root = root
+        self.config = self.load_config()
+        self.current_language = self.config["language"]
+        self.word_colors = {}
+        self.image_path = None
+        
+        # Configuração de cores
+        self.bg_color = "#1E1E1E"
+        self.fg_color = "#FFFFFF"
+        self.widget_bg = "#2D2D2D"
+        self.entry_bg = "#333333"
+        
+        self.setup_window()
+        self.load_background()
+        self.setup_main_ui()
+
+    def load_config(self):
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    return json.load(f)
+            except:
+                return DEFAULT_CONFIG
+        return DEFAULT_CONFIG
+
+    def save_config(self):
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({
+                "language": self.current_language,
+                "version": self.version_var.get() if hasattr(self, 'version_var') else "1.20"
+            }, f)
+
+    def on_close(self):
+        self.save_config()
+        self.root.destroy()
+
+    def setup_window(self):
+        self.root.title(LANGUAGES[self.current_language]["title"])
+        self.root.geometry("1000x700")
+        self.root.minsize(900, 600)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def load_background(self):
+        self.bg_photo = None
+        if os.path.exists(BG_IMAGE):
+            try:
+                img = Image.open(BG_IMAGE)
+                img.thumbnail((1200, 800))
+                self.bg_photo = ImageTk.PhotoImage(img)
+            except Exception as e:
+                print(f"Erro ao carregar imagem de fundo: {e}")
+
+    def setup_main_ui(self):
+        # Frame principal
+        self.main_frame = tk.Frame(self.root, bg=self.bg_color)
+        self.main_frame.pack(fill="both", expand=True)
+        
+        # Imagem de fundo
+        if self.bg_photo:
+            bg_label = tk.Label(self.main_frame, image=self.bg_photo)
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        # Frame de conteúdo
+        content_frame = tk.Frame(self.main_frame, bg=self.bg_color)
+        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Frame de controles (esquerda)
+        self.control_frame = tk.Frame(content_frame, bg=self.widget_bg, bd=2, relief="groove")
+        self.control_frame.pack(side="left", fill="y", padx=10, pady=10)
+        
+        # Frame de visualização (direita)
+        self.preview_frame = tk.Frame(content_frame, bg=self.widget_bg, bd=2, relief="groove")
+        self.preview_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        
+        # Configurar controles
+        self.setup_controls()
+        self.setup_preview()
+        self.create_header_controls()
+
+    def create_header_controls(self):
+        header_frame = tk.Frame(self.main_frame, bg=self.bg_color)
+        header_frame.place(relx=0.95, rely=0.02, anchor="ne")
+        
+        # Seletor de idioma
+        self.lang_var = tk.StringVar(value=self.current_language)
+        lang_menu = ttk.Combobox(header_frame, textvariable=self.lang_var,
+                               values=list(LANGUAGES.keys()), state="readonly", width=8)
+        lang_menu.pack(side="right", padx=5)
+        lang_menu.bind("<<ComboboxSelected>>", self.change_language)
+        
+        tk.Label(header_frame, text="🌐", bg=self.bg_color).pack(side="right")
+
+    def setup_controls(self):
+        # Versão do jogo
+        self.version_text = tk.Label(self.control_frame, text=LANGUAGES[self.current_language]["version"], 
+                                   bg=self.widget_bg, fg=self.fg_color, font=("Arial", 10))
+        self.version_text.pack(pady=(10,5))
+        
+        self.version_var = tk.StringVar(value=self.config["version"])
+        self.version_menu = ttk.Combobox(self.control_frame, textvariable=self.version_var,
+                                       values=GAME_VERSIONS, state="readonly", width=10)
+        self.version_menu.pack(pady=(0,20))
+        self.version_menu.bind("<<ComboboxSelected>>", lambda e: self.update_preview())
+        
+        # Nome da textura
+        self.name_text = tk.Label(self.control_frame, text=LANGUAGES[self.current_language]["name"], 
+                                bg=self.widget_bg, fg=self.fg_color, font=("Arial", 10))
+        self.name_text.pack(pady=(0,5))
+        
+        self.name_var = tk.StringVar()
+        self.name_var.trace_add("write", lambda *args: self.update_preview())
+        self.name_entry = tk.Entry(self.control_frame, textvariable=self.name_var, 
+                                 bg=self.entry_bg, fg=self.fg_color, width=25)
+        self.name_entry.pack(pady=(0,20))
+        
+        # Descrição
+        self.desc_text = tk.Label(self.control_frame, text=LANGUAGES[self.current_language]["description"], 
+                                bg=self.widget_bg, fg=self.fg_color, font=("Arial", 10))
+        self.desc_text.pack(pady=(0,5))
+        
+        self.desc_entry = tk.Text(self.control_frame, height=5, width=25, bg=self.entry_bg, 
+                                fg=self.fg_color, wrap="word")
+        self.desc_entry.pack(pady=(0,10))
+        self.desc_entry.bind("<KeyRelease>", lambda e: self.update_preview())
+        
+        # Botões
+        self.select_word_btn = tk.Button(self.control_frame, text=LANGUAGES[self.current_language]["select_word"], 
+                                       command=self.set_word_colors, bg="#555555", fg="white")
+        self.select_word_btn.pack(fill="x", pady=5)
+        
+        self.select_image_btn = tk.Button(self.control_frame, text=LANGUAGES[self.current_language]["select_image"], 
+                                        command=self.select_image, bg="#555555", fg="white")
+        self.select_image_btn.pack(fill="x", pady=5)
+        
+        self.generate_btn = tk.Button(self.control_frame, text=LANGUAGES[self.current_language]["generate"], 
+                                    command=self.generate_product, bg="#4CAF50", fg="white")
+        self.generate_btn.pack(fill="x", pady=10)
+
+    def setup_preview(self):
+        for widget in self.preview_frame.winfo_children():
+            widget.destroy()
+        
+        # Título
+        self.preview_title = tk.Label(self.preview_frame, text=LANGUAGES[self.current_language]["preview"], 
+                                    font=("Arial", 12, "bold"), bg=self.widget_bg, fg=self.fg_color)
+        self.preview_title.pack(pady=10)
+        
+        # Container principal
+        content_frame = tk.Frame(self.preview_frame, bg=self.widget_bg)
+        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Versão e nome
+        text_frame = tk.Frame(content_frame, bg=self.widget_bg)
+        text_frame.pack(fill="x", pady=(0,20))
+        
+        self.version_label = tk.Label(text_frame, 
+                                    text=f"{LANGUAGES[self.current_language]['version']}: {self.version_var.get()}", 
+                                    bg=self.widget_bg, fg=self.fg_color, font=("Arial", 10))
+        self.version_label.pack(anchor="w")
+        
+        if hasattr(self, 'name_var') and self.name_var.get():
+            self.name_label = tk.Label(text_frame, text=self.name_var.get(), 
+                                     bg=self.widget_bg, fg=self.fg_color, 
+                                     font=("Arial", 11, "bold"))
+            self.name_label.pack(anchor="w", pady=5)
+        
+        # Imagem
+        img_frame = tk.Frame(content_frame, bg=self.widget_bg)
+        img_frame.pack(fill="x", pady=10)
+        
+        if self.image_path:
+            try:
+                img = Image.open(self.image_path)
+                img.thumbnail((150, 150))
+                self.img_tk = ImageTk.PhotoImage(img)
+                self.img_label = tk.Label(img_frame, image=self.img_tk, bg=self.widget_bg)
+                self.img_label.image = self.img_tk
+                self.img_label.pack()
+            except:
+                self.no_img_label = tk.Label(img_frame, text=LANGUAGES[self.current_language]["no_image"], 
+                                           bg=self.widget_bg, fg=self.fg_color)
+                self.no_img_label.pack()
+        else:
+            self.no_img_label = tk.Label(img_frame, text=LANGUAGES[self.current_language]["no_image"], 
+                                       bg=self.widget_bg, fg=self.fg_color)
+            self.no_img_label.pack()
+        
+        # Descrição
+        self.desc_preview_frame = tk.Frame(content_frame, bg=self.widget_bg)
+        self.desc_preview_frame.pack(fill="x", pady=10)
+        
+        if hasattr(self, 'desc_entry'):
+            desc = self.desc_entry.get("1.0", "end-1c")
+            if desc:
+                words = desc.split()
+                for word in words:
+                    color_code = self.word_colors.get(word, "f")
+                    color_hex = COLORS[[k for k, v in COLORS.items() if v["code"] == color_code][0]]["hex"]
+                    
+                    tk.Label(self.desc_preview_frame, text=word+" ", bg=self.widget_bg, 
+                            fg=color_hex, font=("Arial", 10)).pack(side="left")
+
+    def change_language(self, event):
+        """Altera o idioma da interface sem duplicar conteúdo"""
+        self.current_language = self.lang_var.get()
+        self.root.title(LANGUAGES[self.current_language]["title"])
+        self.save_config()
+        self.update_ui_texts()
+
+    def update_ui_texts(self):
+        """Atualiza todos os textos da interface para o idioma atual"""
+        # Atualiza os controles básicos
+        self.version_text.config(text=LANGUAGES[self.current_language]["version"])
+        self.name_text.config(text=LANGUAGES[self.current_language]["name"])
+        self.desc_text.config(text=LANGUAGES[self.current_language]["description"])
+        self.select_word_btn.config(text=LANGUAGES[self.current_language]["select_word"])
+        self.select_image_btn.config(text=LANGUAGES[self.current_language]["select_image"])
+        self.generate_btn.config(text=LANGUAGES[self.current_language]["generate"])
+        self.preview_title.config(text=LANGUAGES[self.current_language]["preview"])
+        
+        # Atualiza os textos específicos
+        self.version_label.config(text=f"{LANGUAGES[self.current_language]['version']}: {self.version_var.get()}")
+        
+        if hasattr(self, 'name_label') and hasattr(self, 'name_var'):
+            self.name_label.config(text=self.name_var.get())
+        
+        # Atualiza o texto "Nenhuma imagem"
+        if hasattr(self, 'no_img_label'):
+            self.no_img_label.config(text=LANGUAGES[self.current_language]["no_image"])
+        
+        # Atualiza a pré-visualização
+        self.update_preview()
+
+    def set_word_colors(self):
+        if not hasattr(self, 'desc_entry'):
+            return
+            
+        desc = self.desc_entry.get("1.0", "end-1c")
+        if not desc.strip():
+            messagebox.showwarning(LANGUAGES[self.current_language]["title"], 
+                                LANGUAGES[self.current_language]["enter_description"])
+            return
+        
+        words = [w for w in desc.split() if w not in self.word_colors]
+        if not words:
+            messagebox.showinfo(LANGUAGES[self.current_language]["title"], 
+                             LANGUAGES[self.current_language]["all_colors_set"])
+            return
+        
+        color_popup = tk.Toplevel(self.root)
+        color_popup.title(LANGUAGES[self.current_language]["select_word"])
+        color_popup.resizable(False, False)
+        
+        # Frame para seleção de palavra
+        word_frame = tk.Frame(color_popup)
+        word_frame.pack(pady=10)
+        
+        tk.Label(word_frame, text=LANGUAGES[self.current_language]["select_word_prompt"]).pack()
+        
+        word_var = tk.StringVar(value=words[0])
+        word_menu = ttk.Combobox(word_frame, textvariable=word_var, values=words, state="readonly")
+        word_menu.pack(pady=5)
+        
+        # Grid de cores 4x4
+        color_frame = tk.Frame(color_popup)
+        color_frame.pack(pady=10)
+        
+        row, col = 0, 0
+        for color_name, color_data in COLORS.items():
+            btn_frame = tk.Frame(color_frame)
+            btn_frame.grid(row=row, column=col, padx=5, pady=5)
+            
+            # Amostra de cor
+            tk.Label(btn_frame, text="", bg=color_data["hex"], width=4, height=2).pack()
+            
+            # Nome da cor
+            tk.Label(btn_frame, text=color_name, font=("Arial", 8)).pack()
+            
+            # Botão invisível
+            btn = tk.Button(btn_frame, command=lambda c=color_data["code"], w=word_var: 
+                           self.apply_word_color(w.get(), c, color_popup), 
+                           borderwidth=0, relief="flat")
+            btn.place(x=0, y=0, width=80, height=60)
+            
+            col += 1
+            if col >= 4:
+                col = 0
+                row += 1
+
+    def apply_word_color(self, word, color_code, popup):
+        self.word_colors[word] = color_code
+        popup.destroy()
+        self.update_preview()
+
+    def select_image(self):
+        path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg")])
+        if path:
+            self.image_path = path
+            self.update_preview()
+
+    def generate_product(self):
+        if not hasattr(self, 'name_var') or not self.name_var.get().strip():
+            messagebox.showerror(LANGUAGES[self.current_language]["title"], 
+                              LANGUAGES[self.current_language]["invalid_name"])
+            return
+        
+        save_dir = filedialog.askdirectory()
+        if not save_dir:
+            return
+        
+        # Criar pack.mcmeta
+        version_parts = self.version_var.get().split(".")
+        major_version = int(version_parts[1]) if len(version_parts) > 1 else 0
+        pack_format = 7 if major_version >= 17 else 3
+        
+        meta = {
+            "pack": {
+                "pack_format": pack_format,
+                "description": self.get_formatted_description()
+            }
+        }
+        
+        try:
+            with open(os.path.join(save_dir, "pack.mcmeta"), "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=4, ensure_ascii=False)
+            
+            if self.image_path:
+                from shutil import copyfile
+                copyfile(self.image_path, os.path.join(save_dir, "pack.png"))
+            
+            messagebox.showinfo(LANGUAGES[self.current_language]["title"], 
+                             f"{LANGUAGES[self.current_language]['success']}\n{save_dir}")
+        except Exception as e:
+            messagebox.showerror(LANGUAGES[self.current_language]["title"], 
+                               f"Erro ao gerar produto:\n{str(e)}")
+
+    def get_formatted_description(self):
+        if not hasattr(self, 'desc_entry'):
+            return ""
+            
+        desc = self.desc_entry.get("1.0", "end-1c")
+        for word, color in self.word_colors.items():
+            desc = desc.replace(word, f"§{color}{word}§f")
+        return desc
+
+    def update_preview(self, *args):
+        self.setup_preview()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = TexturePackGenerator(root)
+    root.mainloop()
